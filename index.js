@@ -40,5 +40,11 @@ const server = app.listen(process.env.PORT || 3000, () => {
 
 // Export the server so that it can be used by other modules
 module.exports = server;
+function myFunction() {
+  console.log("Hello, world!");
+}
+
+// Export the function as the default export
+module.exports = myFunction;
 // Log in to Discord with your client's token
 client.login(process.env.DISCORD_TOKEN);
