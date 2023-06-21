@@ -1,7 +1,9 @@
 // Require the necessary discord.js classes
 require('dotenv').config()
 const { Client, SlashCommandBuilder, GatewayIntentBits, REST, Routes } = require('discord.js');
+const express = require('express');
 
+const app = express();
 
 const testCommand = new SlashCommandBuilder()
 .setName('test')
@@ -32,15 +34,11 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply('Pong!');
   }
 });
-function myFunction() {
-  console.log("Hello, world!");
-}
+const server = app.listen(process.env.PORT || 3000, () => {
+  console.log(`Server listening on port ${server.address().port}`);
+});
 
-const myVariable = 42;
-
-module.exports = {
-  myFunction,
-  myVariable
-};
+// Export the server so that it can be used by other modules
+module.exports = server;
 // Log in to Discord with your client's token
 client.login(process.env.DISCORD_TOKEN);
