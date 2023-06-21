@@ -32,6 +32,15 @@ client.on('interactionCreate', async interaction => {
     await interaction.reply('Pong!');
   }
 });
+function myFunction() {
+  console.log("Hello, world!");
+}
 
+const myVariable = 42;
+
+module.exports = {
+  myFunction,
+  myVariable
+};
 // Log in to Discord with your client's token
 client.login(process.env.DISCORD_TOKEN);
