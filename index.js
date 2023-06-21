@@ -1,50 +1,121 @@
-// Require the necessary discord.js classes
 require('dotenv').config()
-const { Client, SlashCommandBuilder, GatewayIntentBits, REST, Routes } = require('discord.js');
-const express = require('express');
 
-const app = express();
+const fs = require('fs');
+const Discord = require('discord.js');
+const Client = require('./client/Client');
+const config = require('./config.json');
+const {Player} = require('discord-player');
 
-const testCommand = new SlashCommandBuilder()
-.setName('test')
-.setDescription('test playing the song');
+const { ActivityType } = require('discord.js');
 
-const commands = [testCommand]
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client();
+client.commands = new Discord.Collection();
 
-// When the client is ready, run this code (only once)
-// We use 'c' for the event parameter to keep it separate from the already defined 'client'
-client.on('ready', () => {
-  // Get all ids of the servers
-  const guild_ids = client.guilds.cache.map(guild => guild.id);
-  const rest = new REST({version: '9'}).setToken(process.env.DISCORD_TOKEN);
-  for (const guildId of guild_ids)
-  {
-      rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId), 
-          {body: commands})
-      .then(() => console.log('Successfully updated commands for guild ' + guildId))
-      .catch(console.error);
-  }
-console.log(`Logged in as ${client.user.tag}!`);
-});
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isCommand()) return;
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
-  if (interaction.commandName === 'test') {
-    await interaction.reply('Pong!');
-  }
-});
-const server = app.listen(process.env.PORT || 3000, () => {
-  console.log(`Server listening on port ${server.address().port}`);
-});
-
-// Export the server so that it can be used by other modules
-module.exports = server;
-function myFunction() {
-  console.log("Hello, world!");
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  client.commands.set(command.name, command);
 }
 
-// Export the function as the default export
-module.exports = myFunction;
-// Log in to Discord with your client's token
+console.log(client.commands);
+
+const player = new Player(client);
+
+player.on('connectionCreate', (queue) => {
+    queue.connection.voiceConnection.on('stateChange', (oldState, newState) => {
+      const oldNetworking = Reflect.get(oldState, 'networking');
+      const newNetworking = Reflect.get(newState, 'networking');
+
+      const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
+        const newUdp = Reflect.get(newNetworkState, 'udp');
+        clearInterval(newUdp?.keepAliveInterval);
+      }
+
+      oldNetworking?.off('stateChange', networkStateChangeHandler);
+      newNetworking?.on('stateChange', networkStateChangeHandler);
+    });
+});
+
+player.on('error', (queue, error) => {
+  console.log(`[${queue.guild.name}] Error emitted from the queue: ${error.message}`);
+});
+
+player.on('connectionError', (queue, error) => {
+  console.log(`[${queue.guild.name}] Error emitted from the connection: ${error.message}`);
+});
+
+player.on('trackStart', (queue, track) => {
+  queue.metadata.send(`▶ | Started playing: **${track.title}** in **${queue.connection.channel.name}**!`);
+});
+
+player.on('trackAdd', (queue, track) => {
+  queue.metadata.send(`🎶 | Track **${track.title}** queued!`);
+});
+
+player.on('botDisconnect', queue => {
+  queue.metadata.send('❌ | I was manually disconnected from the voice channel, clearing queue!');
+});
+
+player.on('channelEmpty', queue => {
+  queue.metadata.send('❌ | Nobody is in the voice channel, leaving...');
+});
+
+player.on('queueEnd', queue => {
+  queue.metadata.send('✅ | Queue finished!');
+});
+
+client.once('ready', async () => {
+  console.log('Ready!');
+});
+
+client.on('ready', function() {
+  client.user.setPresence({
+    activities: [{ name: config.activity, type: Number(config.activityType) }],
+    status: Discord.PresenceUpdateStatus.Online,
+  });
+});
+
+client.once('reconnecting', () => {
+  console.log('Reconnecting!');
+});
+
+client.once('disconnect', () => {
+  console.log('Disconnect!');
+});
+
+client.on('messageCreate', async message => {
+  if (message.author.bot || !message.guild) return;
+  if (!client.application?.owner) await client.application?.fetch();
+
+  if (message.content === '!deploy' && message.author.id === client.application?.owner?.id) {
+    await message.guild.commands
+      .set(client.commands)
+      .then(() => {
+        message.reply('Deployed!');
+      })
+      .catch(err => {
+        message.reply('Could not deploy commands! Make sure the bot has the application.commands permission!');
+        console.error(err);
+      });
+  }
+});
+
+client.on('interactionCreate', async interaction => {
+  const command = client.commands.get(interaction.commandName.toLowerCase());
+
+  try {
+    if (interaction.commandName == 'ban' || interaction.commandName == 'userinfo') {
+      command.execute(interaction, client);
+    } else {
+      command.execute(interaction, player);
+    }
+  } catch (error) {
+    console.error(error);
+    interaction.followUp({
+      content: 'There was an error trying to execute that command!',
+    });
+  }
+});
+
 client.login(process.env.DISCORD_TOKEN);
