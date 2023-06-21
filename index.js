@@ -1,49 +1,15 @@
-const dotenv = require('dotenv')
-dotenv.config();
-const {Client, GatewayIntentBits,Partials,REST, Routes,SlashCommandBuilder} = require('discord.js')
+// Require the necessary discord.js classes
+require('dotenv').config()
+const { Client, Events, GatewayIntentBits } = require('discord.js');
 
-const stopCommand = new SlashCommandBuilder()
-    .setName('test')
-    .setDescription('Stop playing the song');
+// Create a new client instance
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-const commands = [stopCommand];
- const client = new Client({
-    intents: [
-      GatewayIntentBits.Guilds,
-      GatewayIntentBits.GuildMembers,
-      GatewayIntentBits.GuildBans,
-      GatewayIntentBits.GuildEmojisAndStickers,
-      GatewayIntentBits.GuildIntegrations,
-      GatewayIntentBits.GuildWebhooks,
-      GatewayIntentBits.GuildInvites,
-      GatewayIntentBits.GuildVoiceStates,
-      GatewayIntentBits.GuildPresences,
-      GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.GuildMessageReactions,
-      GatewayIntentBits.GuildMessageTyping,
-      GatewayIntentBits.DirectMessages,
-      GatewayIntentBits.DirectMessageReactions,
-      GatewayIntentBits.DirectMessageTyping
-    ],
-    partials:[Partials.Channel]
-  });
-client.on('ready', () => {
-  // Get all ids of the servers
-  const guild_ids = client.guilds.cache.map(guild => guild.id);
-  const rest = new REST({version: '9'}).setToken(process.env.DISCORD_TOKEN);
-  for (const guildId of guild_ids)
-  {
-      rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId), 
-          {body: commands})
-      .then(() => console.log('Successfully updated commands for guild ' + guildId))
-      .catch(console.error);
-  }
-console.log(`Logged in as ${client.user.tag}!`);
+// When the client is ready, run this code (only once)
+// We use 'c' for the event parameter to keep it separate from the already defined 'client'
+client.once(Events.ClientReady, c => {
+	console.log(`Ready! Logged in as ${c.user.tag}`);
 });
-client.on('interactionCreate',(x)=>{
-  if(x.commandName ==='test')
-  {
-    return x.reply('Test')
-  }
-})
-client.login(process.env.DISCORD_TOKEN)
+
+// Log in to Discord with your client's token
+client.login(process.env.DISCORD_TOKEN);
