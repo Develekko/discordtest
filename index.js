@@ -37,7 +37,7 @@ client.on('interactionCreate', async interaction => {
 const server = app.listen(process.env.PORT || 3000, () => {
   console.log(`Server listening on port ${server.address().port}`);
 });
-
+ 
 // Export the server so that it can be used by other modules
 module.exports = server;
 function myFunction() {
