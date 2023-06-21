@@ -1,15 +1,13 @@
-import * as dotenv from 'dotenv';
+const dotenv = require('dotenv')
 dotenv.config();
-import { Client, GatewayIntentBits,Partials  } from 'discord.js';
-import { REST, Routes } from 'discord.js';
-import { SlashCommandBuilder } from 'discord.js';
+const {Client, GatewayIntentBits,Partials,REST, Routes,SlashCommandBuilder} = require('discord.js')
 
 const stopCommand = new SlashCommandBuilder()
     .setName('test')
     .setDescription('Stop playing the song');
 
 const commands = [stopCommand];
-export const client = new Client({
+ const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMembers,
